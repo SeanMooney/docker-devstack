@@ -1,0 +1,86 @@
+DockerDevstackBase:
+    FROM:  ubuntu:14.04
+    build: |
+        ENV PIP_INDEX_URL=http://192.168.1.10:3141/root/pypi/+simple/
+        ENV PIP_TRUSTED_HOST=192.168.1.10
+        RUN echo 'Acquire::HTTP::Proxy "http://192.168.1.10:3142";' > /etc/apt/apt.conf ; \
+            echo 'Acquire::HTTPS::Proxy "false";' >> /etc/apt/apt.conf
+        RUN apt-get update ; apt-get upgrade -y ; apt-get install -y software-properties-common \
+            python-software-properties ; apt-get autoclean
+
+xrdp:
+    requires: 
+    - DockerDevstackBase
+    build_directory: xrdp
+    build: |
+        RUN apt-get install -y supervisor xrdp && apt-get autoclean
+        COPY xrdp.conf /etc/supervisor/conf.d/xrdp.conf
+
+        # Allow all users to connect via RDP.
+        RUN sed -i '/TerminalServerUsers/d' /etc/xrdp/sesman.ini && \
+            sed -i '/TerminalServerAdmins/d' /etc/xrdp/sesman.ini
+
+        EXPOSE 3389
+        CMD ["supervisord", "-n"]
+
+user:
+    requires: 
+    - DockerDevstackBase
+    build: |
+        RUN useradd tester ; mkdir /home/tester ; chown -R tester:tester /home/tester ; echo tester:tester | chpasswd
+
+
+kde:
+    requires: 
+    - DockerDevstackBase
+        build: |
+        RUN apt-get install -y --no-install-recommends kde-plasma-desktop && apt-get autoclean
+        COPY .Xclients /etc/skel/.Xclients
+lxqt:
+    requires: 
+    - DockerDevstackBase
+    build: |
+        RUN add-apt-repository -y ppa:lubuntu-dev/lubuntu-daily ; \
+            apt-get update; apt-get install lxqt-metapackage lxqt-panel openbox ; \
+            apt-get autoremove ; apt-get autoclean
+        COPY .Xclients /etc/skel/.Xclients
+
+tools:
+    requires: 
+    - DockerDevstackBase
+    build: |
+        RUN apt-get install -y --no-install-recommends tshark nettools nano firefox java git mc netcat \
+        iperf iproute && apt-get autoclean
+
+xfce:
+    requires: 
+    - DockerDevstackBase
+    build: |
+        RUN apt-get install -y --no-install-recommends kde-plasma-desktop && apt-get autoclean
+cinnamon:
+    requires: 
+    - DockerDevstackBase
+    build_directory: cinnamon
+    build: |
+        RUN add-apt-repository ppa:tsvetko.tsvetkov/cinnamon ; \
+            apt-get update; apt-get install cinnamon -y ; apt-get autoremove ; apt-get autoclean
+        COPY .Xclients /etc/skel/.Xclients
+
+kde-xrdp:
+    requires: 
+    - kde
+    - xrdp
+    - user
+
+cinnamon-xrdp:
+    requires: 
+    - cinnamon
+    - xrdp
+    - user
+
+lxqt-xrdp:
+    requires: 
+    - lxqt
+    - xrdp
+    - user
+
