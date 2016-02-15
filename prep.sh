@@ -7,3 +7,9 @@ docker run -d -p 127.0.0.1:2375:2375 --volume=/var/run/docker.sock:/var/run/dock
 export DOCKER_HOST="tcp://127.0.0.1:2375"
 docker ps
 
+patch=$(git diff -- DockerMake | grep b0b6e877d80c2ae5ed4973bf160fd7ad7deb6427-dirty >/dev/null; echo $?)
+if [ "$patch"="1" ]; then
+pushd DockerMake
+    patch -p1 < ../dockermake.patch
+popd
+

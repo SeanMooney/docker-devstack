@@ -20,30 +20,6 @@ tools:
         RUN  apt-get install -y --no-install-recommends wget git socat tshark nano firefox git mc \
              netcat iperf iproute net-tools default-jdk build-essential && apt-get autoclean
 
-xrdp:
-    requires: 
-    - tools
-    build_directory: xrdp
-    build: |
-        RUN apt-get install -qy --force-yes --no-install-recommends \ 
-            x11-xserver-utils libxrandr2 libfuse2 xutils \
-            libxfixes3 libx11-dev pulseaudio xrdp ; apt-get autoclean
-        RUN sed -i '/TerminalServerUsers/d' /etc/xrdp/sesman.ini && \
-            sed -i '/TerminalServerAdmins/d' /etc/xrdp/sesman.ini
-        COPY xrdp.conf /etc/supervisor/conf.d/xrdp.conf
-
-xrdp-x11:
-    requires: 
-    - tools
-    build_directory: xrdp
-    build: |
-        RUN apt-get install -qy --force-yes --no-install-recommends \ 
-            x11-xserver-utils libxrandr2 libfuse2 xutils \
-            libxfixes3 libx11-dev pulseaudio xrdp ; apt-get autoclean
-        RUN sed -i '/TerminalServerUsers/d' /etc/xrdp/sesman.ini && \
-            sed -i '/TerminalServerAdmins/d' /etc/xrdp/sesman.ini
-        COPY xrdp.conf /etc/supervisor/conf.d/xrdp.conf
-
 freerds:
     requires: 
     - tools
@@ -81,19 +57,27 @@ lxde:
         RUN apt-get install -y --no-install-recommends \
             lxde-core bash lxterminal ; apt-get autoclean
 
-lxde-xrdp:
-    requires: 
-    - lxde
-    - tools
-    - init
-    - xrdp
-    - user
+kde:
+     requires:
+     - proxy
+     build_directory: kde
+     build: |
+        RUN apt-get install -y --no-install-recommends kde-plasma-desktop && apt-get autoclean
+
 
 lxde-freerds:
     requires: 
-    - lxde
     - tools
     - init
     - freerds
     - user
+    - lxde
+
+kde-freerds:
+    requires: 
+    - tools
+    - init
+    - freerds
+    - user
+    - kde
 
