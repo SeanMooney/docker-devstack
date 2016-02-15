@@ -1,5 +1,10 @@
-DockerDevstackBase:
+
+base:
     FROM: ubuntu:14.04
+
+proxy:
+    requires: 
+    - base
     build: |
         ENV PIP_INDEX_URL=http://192.168.1.10:3141/root/pypi/+simple/
         ENV PIP_TRUSTED_HOST=192.168.1.10
@@ -8,18 +13,16 @@ DockerDevstackBase:
         RUN apt-get update ; apt-get upgrade -y ; apt-get install -y software-properties-common \
             python-software-properties ; apt-get autoclean
 
-
 tools:
     requires: 
-    - DockerDevstackBase
+    - proxy
     build: |
-        RUN  apt-get install -y --no-install-recommends git socat tshark nano firefox git mc \
+        RUN  apt-get install -y --no-install-recommends wget git socat tshark nano firefox git mc \
              netcat iperf iproute net-tools default-jdk build-essential && apt-get autoclean
-
 
 xrdp:
     requires: 
-    - DockerDevstackBase
+    - tools
     build_directory: xrdp
     build: |
         RUN apt-get install -qy --force-yes --no-install-recommends \ 
@@ -27,76 +30,70 @@ xrdp:
             libxfixes3 libx11-dev pulseaudio xrdp ; apt-get autoclean
         RUN sed -i '/TerminalServerUsers/d' /etc/xrdp/sesman.ini && \
             sed -i '/TerminalServerAdmins/d' /etc/xrdp/sesman.ini
+        COPY xrdp.conf /etc/supervisor/conf.d/xrdp.conf
+
+xrdp-x11:
+    requires: 
+    - tools
+    build_directory: xrdp
+    build: |
+        RUN apt-get install -qy --force-yes --no-install-recommends \ 
+            x11-xserver-utils libxrandr2 libfuse2 xutils \
+            libxfixes3 libx11-dev pulseaudio xrdp ; apt-get autoclean
+        RUN sed -i '/TerminalServerUsers/d' /etc/xrdp/sesman.ini && \
+            sed -i '/TerminalServerAdmins/d' /etc/xrdp/sesman.ini
+        COPY xrdp.conf /etc/supervisor/conf.d/xrdp.conf
+
+freerds:
+    requires: 
+    - tools
+    build_directory: freerds
+    build: |
+        RUN apt-get install -qy --force-yes --no-install-recommends \ 
+            cmake xorg; apt-get autoclean
+        COPY prep.sh prep.sh
+        RUN chmod +x prep.sh ; ./prep.sh 
+        COPY build.sh build.sh
+        RUN chmod +x build.sh ; ./build.sh 
+        COPY freerds.conf /etc/supervisor/conf.d/freerds.conf
+
+user:
+    requires: 
+    - proxy
+    build: |
+        RUN useradd --shell /bin/bash --create-home tester ; echo tester:tester | chpasswd
+        RUN echo "tester    ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
 
 init:
     requires: 
-    - DockerDevstackBase
+    - proxy
     build_directory: init
     build: |
-        #RUN apt-get install -y supervisor; apt-get autoclean
-        #COPY init.conf /etc/supervisor/conf.d/init.conf
-        CMD ["/sbin/init"]
+        RUN apt-get install -y --no-install-recommends supervisor; apt-get autoclean
+        COPY init.conf /etc/supervisor/conf.d/init.conf
+        CMD ["supervisord","-n"]
         EXPOSE 3389
-user:
+lxde:
     requires: 
-    - DockerDevstackBase
+    - proxy
+    build_directory: lxde
     build: |
-        RUN useradd tester ; mkdir /home/tester ; chown -R tester:tester /home/tester ; echo tester:tester | chpasswd
+        RUN apt-get install -y --no-install-recommends \
+            lxde-core bash lxterminal ; apt-get autoclean
 
-
-lxqt:
+lxde-xrdp:
     requires: 
-    - DockerDevstackBase
-    build_directory: lxqt
-    build: |
-        RUN add-apt-repository -y ppa:lubuntu-dev/lubuntu-daily ; \
-            apt-get update; apt-get install -y --no-install-recommends  lxqt-metapackage lxqt-panel openbox ; \
-            apt-get autoremove ; apt-get autoclean
-        COPY .Xclients /etc/skel/.Xclients
-
-kde:
-    requires: 
-    - DockerDevstackBase
-    build_directory: kde
-    build: |
-        RUN apt-get install -y --no-install-recommends kde-plasma-desktop && apt-get autoclean
-        COPY .Xclients /etc/skel/.Xclients
-
-xfce:
-    requires: 
-    - DockerDevstackBase
-    build: |
-        RUN apt-get install -y --no-install-recommends kde-plasma-desktop && apt-get autoclean
-
-cinnamon:
-    requires: 
-    - DockerDevstackBase
-    build_directory: cinnamon
-    build: |
-        RUN add-apt-repository ppa:tsvetko.tsvetkov/cinnamon ; \
-            apt-get update; apt-get install --no-install-recommends  cinnamon -y ; apt-get autoremove ; apt-get autoclean
-        COPY .Xclients /etc/skel/.Xclients
-
-kde-xrdp:
-    requires: 
-    - kde
+    - lxde
     - tools
+    - init
     - xrdp
     - user
-    - init
 
-cinnamon-xrdp:
+lxde-freerds:
     requires: 
-    - cinnamon
+    - lxde
     - tools
-    - xrdp
-    - user
     - init
+    - freerds
+    - user
 
-xfce-xrdp:
-    requires: 
-    - xfce
-    - tools
-    - xrdp
-    - user
-    - init
