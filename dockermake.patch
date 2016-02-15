@@ -1,0 +1,13 @@
+diff --git a/docker-make.py b/docker-make.py
+index f0baba7..41aab2b 100755
+--- a/docker-make.py
++++ b/docker-make.py
+@@ -27,7 +27,7 @@ class DockerMaker(object):
+         #Connect to docker daemon if necessary
+         if build_images:
+             connection = docker.utils.kwargs_from_env()
+-            connection['tls'].assert_hostname = False
++            #connection['tls'].assert_hostname = False
+             self.client = docker.Client(**connection)
+         else:
+             self.client = None

@@ -1,0 +1,38 @@
+version: '2'
+services:
+    desktop:
+        container_name: "desktop"
+        image: "skmooney/kde-freerds"
+        volumes:
+            - "/var/run/docker.sock:/var/run/docker.sock"
+        volumes_from:
+            - data
+        depends_on:
+            - data
+        restart: always
+        tty: true
+        ports:
+            - "3389:3389"
+    data:
+        container_name: "devstack-data"
+        image: "skmooney/devstack-data"
+
+    devstack:
+        container_name: "devstack"
+        image: "skmooney/devstack"
+        volumes:
+            - "/lib/modules:/lib/modules"
+            - "/run/:/run/"
+            - "/dev/:/dev/"
+            - "/sys/fs/cgroup:/sys/fs/cgroup"
+        volumes_from:
+            - data
+        depends_on:
+            - data
+        network_mode: "host"
+        privileged: true
+        restart: always
+        tty: true
+        cap_add:
+            - ALL
+

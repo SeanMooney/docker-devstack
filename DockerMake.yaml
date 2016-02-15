@@ -12,13 +12,14 @@ proxy:
             echo 'Acquire::HTTPS::Proxy "false";' >> /etc/apt/apt.conf
         RUN apt-get update ; apt-get upgrade -y ; apt-get install -y software-properties-common \
             python-software-properties ; apt-get autoclean
+        RUN add-apt-repository -y cloud-archive:liberty ; apt-get update
 
 tools:
     requires: 
     - proxy
     build: |
-        RUN  apt-get install -y --no-install-recommends wget git socat tshark nano firefox git mc \
-             netcat iperf iproute net-tools default-jdk build-essential && apt-get autoclean
+        RUN  apt-get install -y --no-install-recommends nano wget git socat tshark git mc netcat iperf \
+             iproute net-tools build-essential python python3 python-dev python3-dev && apt-get autoclean
 
 freerds:
     requires: 
@@ -64,6 +65,23 @@ kde:
      build: |
         RUN apt-get install -y --no-install-recommends kde-plasma-desktop && apt-get autoclean
 
+devtools:
+     requires:
+     - tools
+     - user
+     build: |
+        RUN apt-get install -y --no-install-recommends apt-transport-https ca-certificates firefox; apt-get autoclean
+        RUN apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D ; \
+            add-apt-repository -y "deb https://apt.dockerproject.org/repo ubuntu-trusty main"; \
+            apt-get update ; apt-get -y install docker-engine; apt-get autoclean ; usermod -aG docker tester
+        RUN apt-get install -y --no-install-recommends  default-jdk && apt-get autoclean
+        RUN wget  https://d1opms6zj7jotq.cloudfront.net/idea/ideaIC-15.0.3.tar.gz ; \
+            tar -xvf ideaIC-15.0.3.tar.gz ; rm ideaIC-15.0.3.tar.gz ; mv idea-IC-143.1821.5 /opt/idea; \
+            chmod +x /opt/idea/bin/idea.sh; \
+            echo -e "#!/bin/bash \n /opt/idea/bin/idea.sh > /dev/null &" > /usr/bin/idea; \
+            chmod +x /usr/bin/idea
+            
+    
 
 lxde-freerds:
     requires: 
@@ -71,6 +89,7 @@ lxde-freerds:
     - init
     - freerds
     - user
+    - devtools
     - lxde
 
 kde-freerds:
@@ -79,5 +98,22 @@ kde-freerds:
     - init
     - freerds
     - user
+    - devtools
     - kde
 
+devstack-data:
+     FROM: alpine:3.3
+     build_directory: devstack
+     build: |
+        RUN apk add --no-cache git 
+        RUN mkdir -m 777 /opt/stack ; git clone http://github.com/openstack-dev/devstack /opt/stack/devstack
+        COPY local.conf /opt/stack/devstack/local.conf
+        VOLUME ["/opt/stack"]
+        CMD ["/bin/true"]
+
+devstack:
+     requires:
+     - tools
+     build_directory: devstack
+     build: |
+        CMD ["/sbin/init"]
