@@ -1,4 +1,3 @@
-
 base:
     FROM: ubuntu:14.04
 
@@ -6,20 +5,37 @@ proxy:
     requires: 
     - base
     build: |
+        # do not update this line
+        ENV PIP_DOWNLOAD_CACHE=/opt/stack/pip-cache
+        RUN mkdir -p -m 777 /opt/stack/pip-cache
+        
+        # if you have a local pip or apt chace update these vaules settins or comment out with #
         ENV PIP_INDEX_URL=http://192.168.1.10:3141/root/pypi/+simple/
         ENV PIP_TRUSTED_HOST=192.168.1.10
         RUN echo 'Acquire::HTTP::Proxy "http://192.168.1.10:3142";' > /etc/apt/apt.conf ; \
             echo 'Acquire::HTTPS::Proxy "false";' >> /etc/apt/apt.conf
+
+        #NOTE: the protocol http(s):// should be included in the proxy vairable and wildcards '*' 
+        #      should not be used in no proxy.
+
+        #ENV http_proxy=http://<proxy>:<port>
+        #ENV https_proxy=https://<proxy>:<port>
+        #ENV no_proxy=
+        #ENV HTTP_PROXY=http://<proxy>:<port>
+        #ENV HTTPS_PROXY=https://<proxy>:<port>
+        #ENV NO_PROXY=
+
         RUN apt-get update ; apt-get upgrade -y ; apt-get install -y software-properties-common \
             python-software-properties ; apt-get autoclean
-        RUN add-apt-repository -y cloud-archive:liberty ; apt-get update
+        RUN add-apt-repository -y cloud-archive:liberty ; apt-get update; apt-get upgrade; apt-get install -f -y
 
 tools:
     requires: 
     - proxy
     build: |
         RUN  apt-get install -y --no-install-recommends nano wget git socat tshark git mc netcat iperf \
-             iproute net-tools build-essential python python3 python-dev python3-dev && apt-get autoclean
+             iproute net-tools build-essential python python3 python-dev python3-dev htop \
+             openssh-client && apt-get autoclean
 
 freerds:
     requires: 
@@ -81,8 +97,6 @@ devtools:
             echo -e "#!/bin/bash \n /opt/idea/bin/idea.sh > /dev/null &" > /usr/bin/idea; \
             chmod +x /usr/bin/idea
             
-    
-
 lxde-freerds:
     requires: 
     - tools
@@ -102,18 +116,17 @@ kde-freerds:
     - kde
 
 devstack-data:
-     FROM: alpine:3.3
-     build_directory: devstack
-     build: |
+    FROM: alpine:3.3
+    build_directory: devstack
+    build: |
         RUN apk add --no-cache git 
-        RUN mkdir -m 777 /opt/stack ; git clone http://github.com/openstack-dev/devstack /opt/stack/devstack
+        RUN mkdir -p -m 777 /opt/stack/pip-cache ; git clone http://github.com/openstack-dev/devstack /opt/stack/devstack
         COPY local.conf /opt/stack/devstack/local.conf
         VOLUME ["/opt/stack"]
         CMD ["/bin/true"]
 
 devstack:
-     requires:
-     - tools
-     build_directory: devstack
-     build: |
-        CMD ["/sbin/init"]
+    requires: 
+    - tools
+    - init
+    build_directory: devstack
