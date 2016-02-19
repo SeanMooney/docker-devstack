@@ -5,14 +5,17 @@ proxy:
     requires: 
     - base
     build: |
-        # do not update this line
+        # do not update the cache locations
         ENV PIP_DOWNLOAD_CACHE=/opt/stack/pip-cache
         RUN mkdir -p -m 777 /opt/stack/pip-cache
+        RUN mkdir -p -m 777 /opt/stack/apt-cache ; \
+            echo 'dir::cache::archives "/opt/stack/apt-cache";' > /etc/apt/apt.conf ; \
+
         
         # if you have a local pip or apt chace update these vaules settins or comment out with #
         ENV PIP_INDEX_URL=http://192.168.1.10:3141/root/pypi/+simple/
         ENV PIP_TRUSTED_HOST=192.168.1.10
-        RUN echo 'Acquire::HTTP::Proxy "http://192.168.1.10:3142";' > /etc/apt/apt.conf ; \
+        RUN echo 'Acquire::HTTP::Proxy "http://192.168.1.10:3142";' >> /etc/apt/apt.conf ; \
             echo 'Acquire::HTTPS::Proxy "false";' >> /etc/apt/apt.conf
 
         #NOTE: the protocol http(s):// should be included in the proxy vairable and wildcards '*' 
@@ -130,3 +133,5 @@ devstack:
     - tools
     - init
     build_directory: devstack
+    build: |
+        RUN apt-get install --no-install-recommends -y libvirt-bin linux-headers-generic fdutils libxtst6
