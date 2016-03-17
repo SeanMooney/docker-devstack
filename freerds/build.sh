@@ -108,7 +108,7 @@ X -version
 pushd $GIT_ROOT_DIR/FreeRDP/server/FreeRDS
 pushd module/X11/service/xorg-build
 #sed -e 's#set(${EXTERNAL_PROJECT}_URL "http://xorg.freedesktop.org/releases/individual/xserver/${${EXTERNAL_PROJECT}_FILE}")#set(${EXTERNAL_PROJECT}_URL "https://github.com/freedesktop-unofficial-mirror/xorg__xserver/releases/tag/${${EXTERNAL_PROJECT}_FILE}")#g' -i CMakeLists.txt
-sed -e 's#set(${EXTERNAL_PROJECT}_URL "http://xorg.freedesktop.org/releases/individual/xserver/${${EXTERNAL_PROJECT}_FILE}")#set(${EXTERNAL_PROJECT}_URL "ftp://artfiles.org/x.org/pub/individual/xserver/${${EXTERNAL_PROJECT}_FILE}")#g' -i CMakeLists.txt
+#sed -e 's#set(${EXTERNAL_PROJECT}_URL "http://xorg.freedesktop.org/releases/individual/xserver/${${EXTERNAL_PROJECT}_FILE}")#set(${EXTERNAL_PROJECT}_URL "ftp://artfiles.org/x.org/pub/individual/xserver/${${EXTERNAL_PROJECT}_FILE}")#g' -i CMakeLists.txt
 cmake .
 if [[ $? != 0 ]]; then
   exit

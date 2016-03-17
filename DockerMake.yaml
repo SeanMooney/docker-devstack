@@ -1,40 +1,48 @@
 base:
     FROM: ubuntu:14.04
 
+
 proxy:
+    build: |
+        # ENV http_proxy=http://<proxy>:<port>
+        # ENV https_proxy=https://<proxy>:<port>
+        # ENV ftp_proxy=http://<proxy>:<port>
+        # ENV no_proxy=
+
+        # ENV HTTP_PROXY=
+        # ENV HTTPS_PROXY=
+        # ENV FTP_PROXY=
+        # ENV NO_PROXY=
+
+cache:
     requires: 
     - base
+    - proxy
     build: |
         # do not update the cache locations
         ENV PIP_DOWNLOAD_CACHE=/opt/stack/pip-cache
         RUN mkdir -p -m 777 /opt/stack/pip-cache
         RUN mkdir -p -m 777 /opt/stack/apt-cache ; \
-            echo 'dir::cache::archives "/opt/stack/apt-cache";' > /etc/apt/apt.conf ; \
-
+            echo 'dir::cache::archives "/opt/stack/apt-cache";' > /etc/apt/apt.conf 
         
-        # if you have a local pip or apt chace update these vaules settins or comment out with #
-        ENV PIP_INDEX_URL=http://192.168.1.10:3141/root/pypi/+simple/
-        ENV PIP_TRUSTED_HOST=192.168.1.10
-        RUN echo 'Acquire::HTTP::Proxy "http://192.168.1.10:3142";' >> /etc/apt/apt.conf ; \
-            echo 'Acquire::HTTPS::Proxy "false";' >> /etc/apt/apt.conf
+        # adjust pip and apt chace to local setting
+        # ENV PIP_INDEX_URL=http://<pip mirror>/simple/
+        # ENV PIP_TRUSTED_HOST=<hostname>
 
-        #NOTE: the protocol http(s):// should be included in the proxy vairable and wildcards '*' 
-        #      should not be used in no proxy.
-
-        #ENV http_proxy=http://<proxy>:<port>
-        #ENV https_proxy=https://<proxy>:<port>
-        #ENV no_proxy=
-        #ENV HTTP_PROXY=http://<proxy>:<port>
-        #ENV HTTPS_PROXY=https://<proxy>:<port>
-        #ENV NO_PROXY=
+        # RUN echo 'Acquire::HTTP::Proxy "http://<aptcache>:3142";' > /etc/apt/apt.conf ; \
+        #     echo 'Acquire::HTTPS::Proxy "false";' >> /etc/apt/apt.conf
+        RUN apt-get update
 
         RUN apt-get update ; apt-get upgrade -y ; apt-get install -y software-properties-common \
             python-software-properties ; apt-get autoclean
         RUN add-apt-repository -y cloud-archive:liberty ; apt-get update; apt-get upgrade; apt-get install -f -y
 
+
+
+
 tools:
     requires: 
-    - proxy
+    - cache
     build: |
         RUN  apt-get install -y --no-install-recommends nano wget git socat tshark git mc netcat iperf \
              iproute net-tools build-essential python python3 python-dev python3-dev htop \
@@ -47,22 +55,22 @@ freerds:
     build: |
         RUN apt-get install -qy --force-yes --no-install-recommends \ 
             cmake xorg; apt-get autoclean
-        COPY prep.sh prep.sh
-        RUN chmod +x prep.sh ; ./prep.sh 
-        COPY build.sh build.sh
-        RUN chmod +x build.sh ; ./build.sh 
+        COPY prep.sh /tmp/prep.sh
+        RUN chmod +x /tmp/prep.sh; sleep 1;/tmp/prep.sh 
+        COPY build.sh /tmp/build.sh
+        RUN chmod +x /tmp/build.sh ; sleep 1; /tmp/build.sh 
         COPY freerds.conf /etc/supervisor/conf.d/freerds.conf
 
 user:
     requires: 
-    - proxy
+    - cache
     build: |
         RUN useradd --shell /bin/bash --create-home tester ; echo tester:tester | chpasswd
         RUN echo "tester    ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
 
 init:
     requires: 
-    - proxy
+    - cache
     build_directory: init
     build: |
         RUN apt-get install -y --no-install-recommends supervisor; apt-get autoclean
@@ -71,7 +79,7 @@ init:
         EXPOSE 3389
 lxde:
     requires: 
-    - proxy
+    - cache
     build_directory: lxde
     build: |
         RUN apt-get install -y --no-install-recommends \
@@ -79,7 +87,7 @@ lxde:
 
 kde:
      requires:
-     - proxy
+     - cache
      build_directory: kde
      build: |
         RUN apt-get install -y --no-install-recommends kde-plasma-desktop && apt-get autoclean
@@ -120,6 +128,8 @@ kde-freerds:
 
 devstack-data:
     FROM: alpine:3.3
+    requires:
+    - proxy
     build_directory: devstack
     build: |
         RUN apk add --no-cache git 
